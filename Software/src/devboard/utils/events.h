@@ -6,7 +6,7 @@
 
 // #define INCLUDE_EVENTS_TEST  // Enable to run an event test loop, see events_test_on_target.cpp
 
-#define EE_MAGIC_HEADER_VALUE 0x0015  // 0x0000 to 0xFFFF
+#define EE_MAGIC_HEADER_VALUE 0x0018  // 0x0000 to 0xFFFF
 
 #define GENERATE_ENUM(ENUM) ENUM,
 #define GENERATE_STRING(STRING) #STRING,
@@ -26,10 +26,11 @@
  */
 
 #define EVENTS_ENUM_TYPE(XX)            \
-  XX(EVENT_CANFD_INIT_FAILURE)          \
-  XX(EVENT_CANMCP_INIT_FAILURE)         \
+  XX(EVENT_CANMCP2517FD_INIT_FAILURE)   \
+  XX(EVENT_CANMCP2515_INIT_FAILURE)     \
   XX(EVENT_CANFD_BUFFER_FULL)           \
   XX(EVENT_CAN_OVERRUN)                 \
+  XX(EVENT_CANFD_RX_OVERRUN)            \
   XX(EVENT_CAN_RX_FAILURE)              \
   XX(EVENT_CAN2_RX_FAILURE)             \
   XX(EVENT_CANFD_RX_FAILURE)            \
@@ -37,6 +38,7 @@
   XX(EVENT_CAN_TX_FAILURE)              \
   XX(EVENT_CAN_INVERTER_MISSING)        \
   XX(EVENT_CHARGE_LIMIT_EXCEEDED)       \
+  XX(EVENT_CONTACTOR_WELDED)            \
   XX(EVENT_DISCHARGE_LIMIT_EXCEEDED)    \
   XX(EVENT_WATER_INGRESS)               \
   XX(EVENT_12V_LOW)                     \
@@ -53,6 +55,7 @@
   XX(EVENT_BATTERY_OVERHEAT)            \
   XX(EVENT_BATTERY_OVERVOLTAGE)         \
   XX(EVENT_BATTERY_UNDERVOLTAGE)        \
+  XX(EVENT_BATTERY_VALUE_UNAVAILABLE)   \
   XX(EVENT_BATTERY_ISOLATION)           \
   XX(EVENT_BATTERY_REQUESTS_HEAT)       \
   XX(EVENT_BATTERY_WARMED_UP)           \
@@ -76,6 +79,7 @@
   XX(EVENT_DUMMY_DEBUG)                 \
   XX(EVENT_DUMMY_WARNING)               \
   XX(EVENT_DUMMY_ERROR)                 \
+  XX(EVENT_PERSISTENT_SAVE_INFO)        \
   XX(EVENT_SERIAL_RX_WARNING)           \
   XX(EVENT_SERIAL_RX_FAILURE)           \
   XX(EVENT_SERIAL_TX_FAILURE)           \

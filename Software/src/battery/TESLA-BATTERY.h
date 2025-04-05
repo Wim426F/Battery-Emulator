@@ -28,12 +28,14 @@
 #define MAX_CELL_VOLTAGE_LFP 3550       //Battery is put into emergency stop if one cell goes over this value
 #define MIN_CELL_VOLTAGE_LFP 2800       //Battery is put into emergency stop if one cell goes below this value
 
+//#define EXP_TESLA_BMS_DIGITAL_HVIL    // Experimental parameter. Forces the transmission of additional CAN frames for experimental purposes, to test potential HVIL issues in 3/Y packs with newer firmware.
+
 void printFaultCodesIfActive();
 void printDebugIfActive(uint8_t symbol, const char* message);
 void print_int_with_units(char* header, int value, char* units);
 void print_SOC(char* header, int SOC);
 void setup_battery(void);
-void transmit_can(CAN_frame* tx_frame, int interface);
+void transmit_can_frame(CAN_frame* tx_frame, int interface);
 #ifdef DOUBLE_BATTERY
 void printFaultCodesIfActive_battery2();
 #endif  //DOUBLE_BATTERY

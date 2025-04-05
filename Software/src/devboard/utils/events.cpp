@@ -118,15 +118,15 @@ void init_events(void) {
 
     // Push changes to eeprom
     EEPROM.commit();
-#ifdef DEBUG_VIA_USB
-    Serial.println("EEPROM wasn't ready");
+#ifdef DEBUG_LOG
+    logging.println("EEPROM wasn't ready");
 #endif
   } else {
     events.event_log_head_index = EEPROM.readUShort(EE_EVENT_LOG_HEAD_INDEX_ADDRESS);
     events.event_log_tail_index = EEPROM.readUShort(EE_EVENT_LOG_TAIL_INDEX_ADDRESS);
-#ifdef DEBUG_VIA_USB
-    Serial.println("EEPROM was initialized for event logging");
-    Serial.println("head: " + String(events.event_log_head_index) + ", tail: " + String(events.event_log_tail_index));
+#ifdef DEBUG_LOG
+    logging.println("EEPROM was initialized for event logging");
+    logging.println("head: " + String(events.event_log_head_index) + ", tail: " + String(events.event_log_tail_index));
 #endif
     print_event_log();
   }
@@ -140,21 +140,23 @@ void init_events(void) {
     events.entries[i].MQTTpublished = false;  // Not published by default
   }
 
-  events.entries[EVENT_CANFD_INIT_FAILURE].level = EVENT_LEVEL_WARNING;
-  events.entries[EVENT_CANMCP_INIT_FAILURE].level = EVENT_LEVEL_WARNING;
+  events.entries[EVENT_CANMCP2517FD_INIT_FAILURE].level = EVENT_LEVEL_WARNING;
+  events.entries[EVENT_CANMCP2515_INIT_FAILURE].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_CANFD_BUFFER_FULL].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_CAN_OVERRUN].level = EVENT_LEVEL_INFO;
+  events.entries[EVENT_CANFD_RX_OVERRUN].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_CAN_RX_FAILURE].level = EVENT_LEVEL_ERROR;
   events.entries[EVENT_CAN2_RX_FAILURE].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_CANFD_RX_FAILURE].level = EVENT_LEVEL_ERROR;
   events.entries[EVENT_CAN_RX_WARNING].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_CAN_TX_FAILURE].level = EVENT_LEVEL_ERROR;
   events.entries[EVENT_CAN_INVERTER_MISSING].level = EVENT_LEVEL_WARNING;
+  events.entries[EVENT_CONTACTOR_WELDED].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_WATER_INGRESS].level = EVENT_LEVEL_ERROR;
   events.entries[EVENT_CHARGE_LIMIT_EXCEEDED].level = EVENT_LEVEL_INFO;
   events.entries[EVENT_DISCHARGE_LIMIT_EXCEEDED].level = EVENT_LEVEL_INFO;
   events.entries[EVENT_12V_LOW].level = EVENT_LEVEL_WARNING;
-  events.entries[EVENT_SOC_PLAUSIBILITY_ERROR].level = EVENT_LEVEL_ERROR;
+  events.entries[EVENT_SOC_PLAUSIBILITY_ERROR].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_SOC_UNAVAILABLE].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_KWH_PLAUSIBILITY_ERROR].level = EVENT_LEVEL_INFO;
   events.entries[EVENT_BATTERY_EMPTY].level = EVENT_LEVEL_INFO;
@@ -167,6 +169,7 @@ void init_events(void) {
   events.entries[EVENT_BATTERY_OVERHEAT].level = EVENT_LEVEL_ERROR;
   events.entries[EVENT_BATTERY_OVERVOLTAGE].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_BATTERY_UNDERVOLTAGE].level = EVENT_LEVEL_WARNING;
+  events.entries[EVENT_BATTERY_VALUE_UNAVAILABLE].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_BATTERY_ISOLATION].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_VOLTAGE_DIFFERENCE].level = EVENT_LEVEL_INFO;
   events.entries[EVENT_SOH_DIFFERENCE].level = EVENT_LEVEL_WARNING;
@@ -188,6 +191,7 @@ void init_events(void) {
   events.entries[EVENT_DUMMY_DEBUG].level = EVENT_LEVEL_DEBUG;
   events.entries[EVENT_DUMMY_WARNING].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_DUMMY_ERROR].level = EVENT_LEVEL_ERROR;
+  events.entries[EVENT_PERSISTENT_SAVE_INFO].level = EVENT_LEVEL_INFO;
   events.entries[EVENT_SERIAL_RX_WARNING].level = EVENT_LEVEL_WARNING;
   events.entries[EVENT_SERIAL_RX_FAILURE].level = EVENT_LEVEL_ERROR;
   events.entries[EVENT_SERIAL_TX_FAILURE].level = EVENT_LEVEL_ERROR;
@@ -260,14 +264,16 @@ void set_event_MQTTpublished(EVENTS_ENUM_TYPE event) {
 
 const char* get_event_message_string(EVENTS_ENUM_TYPE event) {
   switch (event) {
-    case EVENT_CANFD_INIT_FAILURE:
+    case EVENT_CANMCP2517FD_INIT_FAILURE:
       return "CAN-FD initialization failed. Check hardware or bitrate settings";
-    case EVENT_CANMCP_INIT_FAILURE:
+    case EVENT_CANMCP2515_INIT_FAILURE:
       return "CAN-MCP addon initialization failed. Check hardware";
     case EVENT_CANFD_BUFFER_FULL:
       return "CAN-FD buffer overflowed. Some CAN messages were not sent. Contact developers.";
     case EVENT_CAN_OVERRUN:
       return "CAN message failed to send within defined time. Contact developers, CPU load might be too high.";
+    case EVENT_CANFD_RX_OVERRUN:
+      return "CAN-FD failed to receive all messages from CAN bus. Contact developers, CPU load might be too high.";
     case EVENT_CAN_RX_FAILURE:
       return "No CAN communication detected for 60s. Shutting down battery control.";
     case EVENT_CAN2_RX_FAILURE:
@@ -280,6 +286,8 @@ const char* get_event_message_string(EVENTS_ENUM_TYPE event) {
       return "ERROR: CAN messages failed to transmit, or no one on the bus to ACK the message!";
     case EVENT_CAN_INVERTER_MISSING:
       return "Warning: Inverter not sending messages on CAN bus. Check wiring!";
+    case EVENT_CONTACTOR_WELDED:
+      return "Warning: Contactors sticking/welded. Inspect battery with caution!";
     case EVENT_CHARGE_LIMIT_EXCEEDED:
       return "Info: Inverter is charging faster than battery is allowing.";
     case EVENT_DISCHARGE_LIMIT_EXCEEDED:
@@ -289,7 +297,7 @@ const char* get_event_message_string(EVENTS_ENUM_TYPE event) {
     case EVENT_12V_LOW:
       return "12V battery source below required voltage to safely close contactors. Inspect the supply/battery!";
     case EVENT_SOC_PLAUSIBILITY_ERROR:
-      return "ERROR: SOC reported by battery not plausible. Restart battery!";
+      return "Warning: SOC reported by battery not plausible. Restart battery!";
     case EVENT_SOC_UNAVAILABLE:
       return "Warning: SOC not sent by BMS. Calibrate BMS via app.";
     case EVENT_KWH_PLAUSIBILITY_ERROR:
@@ -318,6 +326,8 @@ const char* get_event_message_string(EVENTS_ENUM_TYPE event) {
       return "Warning: Battery exceeding maximum design voltage. Discharge battery to prevent damage!";
     case EVENT_BATTERY_UNDERVOLTAGE:
       return "Warning: Battery under minimum design voltage. Charge battery to prevent damage!";
+    case EVENT_BATTERY_VALUE_UNAVAILABLE:
+      return "Warning: Battery measurement unavailable. Check 12V power supply and battery wiring!";
     case EVENT_BATTERY_ISOLATION:
       return "Warning: Battery reports isolation error. High voltage might be leaking to ground. Check battery!";
     case EVENT_VOLTAGE_DIFFERENCE:
@@ -359,6 +369,8 @@ const char* get_event_message_string(EVENTS_ENUM_TYPE event) {
       return "The dummy warning event was set!";  // Don't change this event message!
     case EVENT_DUMMY_ERROR:
       return "The dummy error event was set!";  // Don't change this event message!
+    case EVENT_PERSISTENT_SAVE_INFO:
+      return "Info: Failed to save user settings. Namespace full?";
     case EVENT_SERIAL_RX_WARNING:
       return "Error in serial function: No data received for some time, see data for minutes";
     case EVENT_SERIAL_RX_FAILURE:
@@ -459,6 +471,10 @@ static void set_event(EVENTS_ENUM_TYPE event, uint8_t data, bool latched) {
     if (events.entries[event].log) {
       log_event(event, events.entries[event].millisrolloverCount, events.entries[event].timestamp, data);
     }
+#ifdef DEBUG_LOG
+    logging.print("Event: ");
+    logging.println(get_event_message_string(event));
+#endif
   }
 
   // We should set the event, update event info
@@ -472,10 +488,6 @@ static void set_event(EVENTS_ENUM_TYPE event, uint8_t data, bool latched) {
   events.level = max(events.level, events.entries[event].level);
 
   update_bms_status();
-
-#ifdef DEBUG_VIA_USB
-  Serial.println(get_event_message_string(event));
-#endif
 }
 
 static void update_bms_status(void) {
@@ -549,8 +561,8 @@ static void log_event(EVENTS_ENUM_TYPE event, uint8_t millisrolloverCount, uint3
   // Store the new indices
   EEPROM.writeUShort(EE_EVENT_LOG_HEAD_INDEX_ADDRESS, events.event_log_head_index);
   EEPROM.writeUShort(EE_EVENT_LOG_TAIL_INDEX_ADDRESS, events.event_log_tail_index);
-  //Serial.println("Wrote event " + String(event) + " to " + String(entry_address));
-  //Serial.println("head: " + String(events.event_log_head_index) + ", tail: " + String(events.event_log_tail_index));
+  //logging.println("Wrote event " + String(event) + " to " + String(entry_address));
+  //logging.println("head: " + String(events.event_log_head_index) + ", tail: " + String(events.event_log_tail_index));
 
   // We don't need the exact number, it's just for deciding to store or not
   events.nof_logged_events += (events.nof_logged_events < 255) ? 1 : 0;
@@ -559,8 +571,8 @@ static void log_event(EVENTS_ENUM_TYPE event, uint8_t millisrolloverCount, uint3
 static void print_event_log(void) {
   // If the head actually points to the tail, the log is probably blank
   if (events.event_log_head_index == events.event_log_tail_index) {
-#ifdef DEBUG_VIA_USB
-    Serial.println("No events in log");
+#ifdef DEBUG_LOG
+    logging.println("No events in log");
 #endif
     return;
   }
@@ -576,9 +588,9 @@ static void print_event_log(void) {
       // The entry is a blank that has been left behind somehow
       continue;
     }
-#ifdef DEBUG_VIA_USB
-    Serial.println("Event: " + String(get_event_enum_string(entry.event)) + ", data: " + String(entry.data) +
-                   ", time: " + String(entry.timestamp));
+#ifdef DEBUG_LOG
+    logging.println("Event: " + String(get_event_enum_string(entry.event)) + ", data: " + String(entry.data) +
+                    ", time: " + String(entry.timestamp));
 #endif
     if (index == events.event_log_head_index) {
       break;

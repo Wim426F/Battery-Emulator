@@ -98,9 +98,6 @@ void update_values_battery() {
 
   datalayer.battery.status.current_dA = total_current;
 
-  datalayer.battery.status.active_power_W =  //Power in watts, Negative = charging batt
-      ((datalayer.battery.status.voltage_dV * datalayer.battery.status.current_dA) / 100);
-
   // Charge power is set in .h file
   if (datalayer.battery.status.real_soc > 9900) {
     datalayer.battery.status.max_charge_power_W = MAX_CHARGE_POWER_WHEN_TOPBALANCING_W;
@@ -161,21 +158,21 @@ void update_values_battery() {
   datalayer.battery.status.cell_min_voltage_mV = minimum_cell_voltage;
 }
 
-void receive_can_battery(CAN_frame rx_frame) {
+void handle_incoming_can_frame_battery(CAN_frame rx_frame) {
 
   /*
   // All CAN messages recieved will be logged via serial
-  Serial.print(millis());  // Example printout, time, ID, length, data: 7553  1DB  8  FF C0 B9 EA 0 0 2 5D
-  Serial.print("  ");
-  Serial.print(rx_frame.ID, HEX);
-  Serial.print("  ");
-  Serial.print(rx_frame.DLC);
-  Serial.print("  ");
+  logging.print(millis());  // Example printout, time, ID, length, data: 7553  1DB  8  FF C0 B9 EA 0 0 2 5D
+  logging.print("  ");
+  logging.print(rx_frame.ID, HEX);
+  logging.print("  ");
+  logging.print(rx_frame.DLC);
+  logging.print("  ");
   for (int i = 0; i < rx_frame.DLC; ++i) {
-    Serial.print(rx_frame.data.u8[i], HEX);
-    Serial.print(" ");
+    logging.print(rx_frame.data.u8[i], HEX);
+    logging.print(" ");
   }
-  Serial.println("");
+  logging.println("");
   */
   switch (rx_frame.ID) {
     case 0xF5:                 // This is the only message is sent from BMS
@@ -553,7 +550,7 @@ void receive_can_battery(CAN_frame rx_frame) {
   }
 }
 
-void send_can_battery() {
+void transmit_can_battery() {
   unsigned long currentMillis = millis();
   // Send 10s CAN Message
   if (currentMillis - previousMillis10s >= INTERVAL_10_S) {
@@ -566,17 +563,15 @@ void send_can_battery() {
     }
 
     if (!setup_completed) {
-      transmit_can(&RJXZS_10, can_config.battery);  // Communication connected flag
-      transmit_can(&RJXZS_1C, can_config.battery);  // CAN OK
+      transmit_can_frame(&RJXZS_10, can_config.battery);  // Communication connected flag
+      transmit_can_frame(&RJXZS_1C, can_config.battery);  // CAN OK
     }
   }
 }
 
 void setup_battery(void) {  // Performs one time setup at startup
-#ifdef DEBUG_VIA_USB
-  Serial.println("RJXZS BMS selected");
-#endif
-
+  strncpy(datalayer.system.info.battery_protocol, "RJXZS BMS, DIY battery", 63);
+  datalayer.system.info.battery_protocol[63] = '\0';
   datalayer.battery.info.max_design_voltage_dV = MAX_PACK_VOLTAGE_DV;
   datalayer.battery.info.min_design_voltage_dV = MIN_PACK_VOLTAGE_DV;
   datalayer.battery.info.max_cell_voltage_mV = MAX_CELL_VOLTAGE_MV;

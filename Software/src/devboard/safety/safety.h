@@ -6,7 +6,7 @@
 
 #define MAX_CAN_FAILURES 50
 
-#define MAX_CHARGE_DISCHARGE_LIMIT_FAILURES 1
+#define MAX_CHARGE_DISCHARGE_LIMIT_FAILURES 5
 
 //battery pause status begin
 enum battery_pause_status { NORMAL = 0, PAUSING = 1, PAUSED = 2, RESUMING = 3 };
@@ -22,7 +22,7 @@ void update_machineryprotection();
 
 //battery pause status begin
 void setBatteryPause(bool pause_battery, bool pause_CAN, bool equipment_stop = false, bool store_settings = true);
-void emulator_pause_state_send_CAN_battery();
+void emulator_pause_state_transmit_can_battery();
 std::string get_emulator_pause_status();
 //battery pause status end
 

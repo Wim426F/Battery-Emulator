@@ -3,19 +3,19 @@
 #include "../datalayer/datalayer.h"
 #include "PYLON-CAN.h"
 
-#define SEND_0  //If defined, the messages will have ID ending with 0 (useful for some inverters)
-//#define SEND_1 //If defined, the messages will have ID ending with 1 (useful for some inverters)
+//#define SEND_0  //If defined, the messages will have ID ending with 0 (useful for some inverters)
+#define SEND_1 //If defined, the messages will have ID ending with 1 (useful for some inverters)
 #define INVERT_LOW_HIGH_BYTES  //If defined, certain frames will have inverted low/high bytes \
                                //useful for some inverters like Sofar that report the voltages incorrect otherwise
-//#define SET_30K_OFFSET  //If defined, current values are sent with a 30k offest (useful for ferroamp)
+#define SET_30K_OFFSET  //If defined, current values are sent with a 30k offest (useful for ferroamp)
 
 /* Some inverters need to see a specific amount of cells/modules to emulate a specific Pylon battery.
 Change the following only if your inverter is generating fault codes about voltage range */
-#define TOTAL_CELL_AMOUNT 120
+#define TOTAL_CELL_AMOUNT 96
 #define MODULES_IN_SERIES 4
 #define CELLS_PER_MODULE 30
-#define VOLTAGE_LEVEL 384
-#define AH_CAPACITY 37
+#define VOLTAGE_LEVEL 177
+#define AH_CAPACITY 216
 
 /* Do not change code below unless you are sure what you are doing */
 //Actual content messages
@@ -134,31 +134,9 @@ CAN_frame PYLON_4291 = {.FD = false,
                         .ID = 0x4291,
                         .data = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
 
-static int16_t max_charge_current = 0;
-static int16_t max_discharge_current = 0;
-
 void update_values_can_inverter() {  //This function maps all the values fetched from battery CAN to the correct CAN messages
   //There are more mappings that could be added, but this should be enough to use as a starting point
   // Note we map both 0 and 1 messages
-
-  if (datalayer.battery.status.voltage_dV > 10) {  //div0 safeguard
-    max_charge_current = (datalayer.battery.status.max_charge_power_W * 100) / datalayer.battery.status.voltage_dV;
-    if (max_charge_current > datalayer.battery.info.max_charge_amp_dA) {
-      max_charge_current =
-          datalayer.battery.info
-              .max_charge_amp_dA;  //Cap the value to the max allowed Amp. Some inverters cannot handle large values.
-    }
-    max_discharge_current =
-        (datalayer.battery.status.max_discharge_power_W * 100) / datalayer.battery.status.voltage_dV;
-    if (max_discharge_current > datalayer.battery.info.max_discharge_amp_dA) {
-      max_discharge_current =
-          datalayer.battery.info
-              .max_discharge_amp_dA;  //Cap the value to the max allowed Amp. Some inverters cannot handle large values.
-    }
-  } else {
-    max_charge_current = 0;
-    max_discharge_current = 0;
-  }
 
   //Charge / Discharge allowed
   PYLON_4280.data.u8[0] = 0;
@@ -253,28 +231,28 @@ void update_values_can_inverter() {  //This function maps all the values fetched
 
 #ifdef SET_30K_OFFSET
   //Max ChargeCurrent
-  PYLON_4220.data.u8[4] = ((max_charge_current + 30000) & 0x00FF);
-  PYLON_4220.data.u8[5] = ((max_charge_current + 30000) >> 8);
-  PYLON_4221.data.u8[4] = ((max_charge_current + 30000) & 0x00FF);
-  PYLON_4221.data.u8[5] = ((max_charge_current + 30000) >> 8);
+  PYLON_4220.data.u8[4] = ((datalayer.battery.status.max_charge_current_dA + 30000) & 0x00FF);
+  PYLON_4220.data.u8[5] = ((datalayer.battery.status.max_charge_current_dA + 30000) >> 8);
+  PYLON_4221.data.u8[4] = ((datalayer.battery.status.max_charge_current_dA + 30000) & 0x00FF);
+  PYLON_4221.data.u8[5] = ((datalayer.battery.status.max_charge_current_dA + 30000) >> 8);
 
   //Max DischargeCurrent
-  PYLON_4220.data.u8[6] = ((30000 - max_discharge_current) & 0x00FF);
-  PYLON_4220.data.u8[7] = ((30000 - max_discharge_current) >> 8);
-  PYLON_4221.data.u8[6] = ((30000 - max_discharge_current) & 0x00FF);
-  PYLON_4221.data.u8[7] = ((30000 - max_discharge_current) >> 8);
+  PYLON_4220.data.u8[6] = ((30000 - datalayer.battery.status.max_discharge_current_dA) & 0x00FF);
+  PYLON_4220.data.u8[7] = ((30000 - datalayer.battery.status.max_discharge_current_dA) >> 8);
+  PYLON_4221.data.u8[6] = ((30000 - datalayer.battery.status.max_discharge_current_dA) & 0x00FF);
+  PYLON_4221.data.u8[7] = ((30000 - datalayer.battery.status.max_discharge_current_dA) >> 8);
 #else
   //Max ChargeCurrent
-  PYLON_4220.data.u8[4] = (max_charge_current & 0x00FF);
-  PYLON_4220.data.u8[5] = (max_charge_current >> 8);
-  PYLON_4221.data.u8[4] = (max_charge_current & 0x00FF);
-  PYLON_4221.data.u8[5] = (max_charge_current >> 8);
+  PYLON_4220.data.u8[4] = (datalayer.battery.status.max_charge_current_dA & 0x00FF);
+  PYLON_4220.data.u8[5] = (datalayer.battery.status.max_charge_current_dA >> 8);
+  PYLON_4221.data.u8[4] = (datalayer.battery.status.max_charge_current_dA & 0x00FF);
+  PYLON_4221.data.u8[5] = (datalayer.battery.status.max_charge_current_dA >> 8);
 
   //Max DishargeCurrent
-  PYLON_4220.data.u8[6] = (max_discharge_current & 0x00FF);
-  PYLON_4220.data.u8[7] = (max_discharge_current >> 8);
-  PYLON_4221.data.u8[6] = (max_discharge_current & 0x00FF);
-  PYLON_4221.data.u8[7] = (max_discharge_current >> 8);
+  PYLON_4220.data.u8[6] = (datalayer.battery.status.max_discharge_current_dA & 0x00FF);
+  PYLON_4220.data.u8[7] = (datalayer.battery.status.max_discharge_current_dA >> 8);
+  PYLON_4221.data.u8[6] = (datalayer.battery.status.max_discharge_current_dA & 0x00FF);
+  PYLON_4221.data.u8[7] = (datalayer.battery.status.max_discharge_current_dA >> 8);
 #endif
 
   //Max cell voltage
@@ -444,7 +422,7 @@ void update_values_can_inverter() {  //This function maps all the values fetched
   }
 }
 
-void receive_can_inverter(CAN_frame rx_frame) {
+void map_can_frame_to_variable_inverter(CAN_frame rx_frame) {
   switch (rx_frame.ID) {
     case 0x4200:  //Message originating from inverter. Depending on which data is required, act accordingly
       datalayer.system.status.CAN_inverter_still_alive = CAN_STILL_ALIVE;
@@ -460,43 +438,47 @@ void receive_can_inverter(CAN_frame rx_frame) {
   }
 }
 
-void send_can_inverter() {
+void transmit_can_inverter() {
   // No periodic sending, we only react on received can messages
 }
 
 void send_setup_info() {  //Ensemble information
 #ifdef SEND_0
-  transmit_can(&PYLON_7310, can_config.inverter);
-  transmit_can(&PYLON_7320, can_config.inverter);
+  transmit_can_frame(&PYLON_7310, can_config.inverter);
+  transmit_can_frame(&PYLON_7320, can_config.inverter);
 #endif
 #ifdef SEND_1
-  transmit_can(&PYLON_7311, can_config.inverter);
-  transmit_can(&PYLON_7321, can_config.inverter);
+  transmit_can_frame(&PYLON_7311, can_config.inverter);
+  transmit_can_frame(&PYLON_7321, can_config.inverter);
 #endif
 }
 
 void send_system_data() {  //System equipment information
 #ifdef SEND_0
-  transmit_can(&PYLON_4210, can_config.inverter);
-  transmit_can(&PYLON_4220, can_config.inverter);
-  transmit_can(&PYLON_4230, can_config.inverter);
-  transmit_can(&PYLON_4240, can_config.inverter);
-  transmit_can(&PYLON_4250, can_config.inverter);
-  transmit_can(&PYLON_4260, can_config.inverter);
-  transmit_can(&PYLON_4270, can_config.inverter);
-  transmit_can(&PYLON_4280, can_config.inverter);
-  transmit_can(&PYLON_4290, can_config.inverter);
+  transmit_can_frame(&PYLON_4210, can_config.inverter);
+  transmit_can_frame(&PYLON_4220, can_config.inverter);
+  transmit_can_frame(&PYLON_4230, can_config.inverter);
+  transmit_can_frame(&PYLON_4240, can_config.inverter);
+  transmit_can_frame(&PYLON_4250, can_config.inverter);
+  transmit_can_frame(&PYLON_4260, can_config.inverter);
+  transmit_can_frame(&PYLON_4270, can_config.inverter);
+  transmit_can_frame(&PYLON_4280, can_config.inverter);
+  transmit_can_frame(&PYLON_4290, can_config.inverter);
 #endif
 #ifdef SEND_1
-  transmit_can(&PYLON_4211, can_config.inverter);
-  transmit_can(&PYLON_4221, can_config.inverter);
-  transmit_can(&PYLON_4231, can_config.inverter);
-  transmit_can(&PYLON_4241, can_config.inverter);
-  transmit_can(&PYLON_4251, can_config.inverter);
-  transmit_can(&PYLON_4261, can_config.inverter);
-  transmit_can(&PYLON_4271, can_config.inverter);
-  transmit_can(&PYLON_4281, can_config.inverter);
-  transmit_can(&PYLON_4291, can_config.inverter);
+  transmit_can_frame(&PYLON_4211, can_config.inverter);
+  transmit_can_frame(&PYLON_4221, can_config.inverter);
+  transmit_can_frame(&PYLON_4231, can_config.inverter);
+  transmit_can_frame(&PYLON_4241, can_config.inverter);
+  transmit_can_frame(&PYLON_4251, can_config.inverter);
+  transmit_can_frame(&PYLON_4261, can_config.inverter);
+  transmit_can_frame(&PYLON_4271, can_config.inverter);
+  transmit_can_frame(&PYLON_4281, can_config.inverter);
+  transmit_can_frame(&PYLON_4291, can_config.inverter);
 #endif
+}
+void setup_inverter(void) {  // Performs one time setup at startup over CAN bus
+  strncpy(datalayer.system.info.inverter_protocol, "Pylontech battery over CAN bus", 63);
+  datalayer.system.info.inverter_protocol[63] = '\0';
 }
 #endif

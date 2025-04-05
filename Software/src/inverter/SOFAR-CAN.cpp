@@ -207,10 +207,10 @@ void update_values_can_inverter() {  //This function maps all the values fetched
   //Maxvoltage (eg 400.0V = 4000 , 16bits long) Charge Cutoff Voltage
   SOFAR_351.data.u8[0] = (datalayer.battery.info.max_design_voltage_dV >> 8);
   SOFAR_351.data.u8[1] = (datalayer.battery.info.max_design_voltage_dV & 0x00FF);
-  //SOFAR_351.data.u8[2] = DC charge current limitation (Default 25.0A)
-  //SOFAR_351.data.u8[3] = DC charge current limitation
-  //SOFAR_351.data.u8[4] = DC discharge current limitation (Default 25.0A)
-  //SOFAR_351.data.u8[5] = DC discharge current limitation
+  SOFAR_351.data.u8[2] = (datalayer.battery.status.max_charge_current_dA >> 8);
+  SOFAR_351.data.u8[3] = (datalayer.battery.status.max_charge_current_dA & 0x00FF);
+  SOFAR_351.data.u8[4] = (datalayer.battery.status.max_discharge_current_dA >> 8);
+  SOFAR_351.data.u8[5] = (datalayer.battery.status.max_discharge_current_dA & 0x00FF);
   //Minvoltage (eg 300.0V = 3000 , 16bits long) Discharge Cutoff Voltage
   SOFAR_351.data.u8[6] = (datalayer.battery.info.min_design_voltage_dV >> 8);
   SOFAR_351.data.u8[7] = (datalayer.battery.info.min_design_voltage_dV & 0x00FF);
@@ -230,7 +230,7 @@ void update_values_can_inverter() {  //This function maps all the values fetched
   SOFAR_356.data.u8[3] = (datalayer.battery.status.temperature_max_dC & 0x00FF);
 }
 
-void receive_can_inverter(CAN_frame rx_frame) {
+void map_can_frame_to_variable_inverter(CAN_frame rx_frame) {
   switch (rx_frame.ID) {  //In here we need to respond to the inverter. TODO: make logic
     case 0x605:
       datalayer.system.status.CAN_inverter_still_alive = CAN_STILL_ALIVE;
@@ -247,20 +247,25 @@ void receive_can_inverter(CAN_frame rx_frame) {
   }
 }
 
-void send_can_inverter() {
+void transmit_can_inverter() {
   unsigned long currentMillis = millis();
   // Send 100ms CAN Message
   if (currentMillis - previousMillis100 >= INTERVAL_100_MS) {
     previousMillis100 = currentMillis;
     //Frames actively reported by BMS
-    transmit_can(&SOFAR_351, can_config.inverter);
-    transmit_can(&SOFAR_355, can_config.inverter);
-    transmit_can(&SOFAR_356, can_config.inverter);
-    transmit_can(&SOFAR_30F, can_config.inverter);
-    transmit_can(&SOFAR_359, can_config.inverter);
-    transmit_can(&SOFAR_35E, can_config.inverter);
-    transmit_can(&SOFAR_35F, can_config.inverter);
-    transmit_can(&SOFAR_35A, can_config.inverter);
+    transmit_can_frame(&SOFAR_351, can_config.inverter);
+    transmit_can_frame(&SOFAR_355, can_config.inverter);
+    transmit_can_frame(&SOFAR_356, can_config.inverter);
+    transmit_can_frame(&SOFAR_30F, can_config.inverter);
+    transmit_can_frame(&SOFAR_359, can_config.inverter);
+    transmit_can_frame(&SOFAR_35E, can_config.inverter);
+    transmit_can_frame(&SOFAR_35F, can_config.inverter);
+    transmit_can_frame(&SOFAR_35A, can_config.inverter);
   }
+}
+
+void setup_inverter(void) {  // Performs one time setup at startup over CAN bus
+  strncpy(datalayer.system.info.inverter_protocol, "Sofar BMS (Extended Frame) over CAN bus", 63);
+  datalayer.system.info.inverter_protocol[63] = '\0';
 }
 #endif

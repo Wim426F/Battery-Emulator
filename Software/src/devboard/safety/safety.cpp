@@ -27,14 +27,14 @@ void update_machineryprotection() {
   }
 
   // Battery is overheated!
-  if (datalayer.battery.status.temperature_max_dC > 500) {
+  if (datalayer.battery.status.temperature_max_dC > BATTERY_MAXTEMPERATURE) {
     set_event(EVENT_BATTERY_OVERHEAT, datalayer.battery.status.temperature_max_dC);
   } else {
     clear_event(EVENT_BATTERY_OVERHEAT);
   }
 
   // Battery is frozen!
-  if (datalayer.battery.status.temperature_min_dC < -250) {
+  if (datalayer.battery.status.temperature_min_dC < BATTERY_MINTEMPERATURE) {
     set_event(EVENT_BATTERY_FROZEN, datalayer.battery.status.temperature_min_dC);
   } else {
     clear_event(EVENT_BATTERY_FROZEN);
@@ -97,7 +97,7 @@ void update_machineryprotection() {
     clear_event(EVENT_SOH_LOW);
   }
 
-#if !defined(PYLON_BATTERY) && !defined(RENAULT_TWIZY_BATTERY)
+#ifdef NISSAN_LEAF_BATTERY
   // Check if SOC% is plausible
   if (datalayer.battery.status.voltage_dV >
       (datalayer.battery.info.max_design_voltage_dV -
@@ -108,10 +108,11 @@ void update_machineryprotection() {
       clear_event(EVENT_SOC_PLAUSIBILITY_ERROR);
     }
   }
-#endif
+#endif  //NISSAN_LEAF_BATTERY
 
   // Check diff between highest and lowest cell
-  cell_deviation_mV = (datalayer.battery.status.cell_max_voltage_mV - datalayer.battery.status.cell_min_voltage_mV);
+  cell_deviation_mV =
+      std::abs(datalayer.battery.status.cell_max_voltage_mV - datalayer.battery.status.cell_min_voltage_mV);
   if (cell_deviation_mV > datalayer.battery.info.max_cell_voltage_deviation_mV) {
     set_event(EVENT_CELL_DEVIATION_HIGH, (cell_deviation_mV / 20));
   } else {
@@ -229,6 +230,14 @@ void update_machineryprotection() {
   }
 
 #endif  // DOUBLE_BATTERY
+
+  //Safeties verified, Zero charge/discharge ampere values incase any safety wrote the W to 0
+  if (datalayer.battery.status.max_discharge_power_W == 0) {
+    datalayer.battery.status.max_discharge_current_dA = 0;
+  }
+  if (datalayer.battery.status.max_charge_power_W == 0) {
+    datalayer.battery.status.max_charge_current_dA = 0;
+  }
 }
 
 //battery pause status begin
@@ -274,12 +283,12 @@ void setBatteryPause(bool pause_battery, bool pause_CAN, bool equipment_stop, bo
   }
 
   //immediate check if we can send CAN messages
-  emulator_pause_state_send_CAN_battery();
+  emulator_pause_state_transmit_can_battery();
 }
 
 /// @brief handle emulator pause status
 /// @return true if CAN messages should be sent to battery, false if not
-void emulator_pause_state_send_CAN_battery() {
+void emulator_pause_state_transmit_can_battery() {
   bool previous_allowed_to_send_CAN = allowed_to_send_CAN;
 
   if (emulator_pause_status == NORMAL) {

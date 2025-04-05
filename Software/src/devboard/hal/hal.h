@@ -7,8 +7,12 @@
 #include "hw_lilygo.h"
 #elif defined(HW_STARK)
 #include "hw_stark.h"
-#elif defined(HW_SJB_V1)
-#include "hw_sjb_v1.h"
+#elif defined(HW_3LB)
+#include "hw_3LB.h"
+#elif defined(HW_DEVKIT)
+#include "hw_devkit.h"
+#elif defined(HW_ESP32S3_DEVBOARD)
+#include "hw_esp32_devboard.h"
 #endif
 
 #endif

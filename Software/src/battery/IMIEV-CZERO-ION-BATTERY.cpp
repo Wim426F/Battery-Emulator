@@ -51,8 +51,6 @@ void update_values_battery() {  //This function maps all the values fetched via 
 
   datalayer.battery.status.max_discharge_power_W = 10000;  // 10kW   //TODO: Fix when CAN is decoded
 
-  datalayer.battery.status.active_power_W = BMU_Power;  //TODO: Scaling?
-
   static int n = sizeof(cell_voltages) / sizeof(cell_voltages[0]);
   max_volt_cel = cell_voltages[0];  // Initialize max with the first element of the array
   for (int i = 1; i < n; i++) {
@@ -105,33 +103,33 @@ void update_values_battery() {  //This function maps all the values fetched via 
   }
 
   if (!BMU_Detected) {
-#ifdef DEBUG_VIA_USB
-    Serial.println("BMU not detected, check wiring!");
+#ifdef DEBUG_LOG
+    logging.println("BMU not detected, check wiring!");
 #endif
   }
 
-#ifdef DEBUG_VIA_USB
-  Serial.println("Battery Values");
-  Serial.print("BMU SOC: ");
-  Serial.print(BMU_SOC);
-  Serial.print(" BMU Current: ");
-  Serial.print(BMU_Current);
-  Serial.print(" BMU Battery Voltage: ");
-  Serial.print(BMU_PackVoltage);
-  Serial.print(" BMU_Power: ");
-  Serial.print(BMU_Power);
-  Serial.print(" Cell max voltage: ");
-  Serial.print(max_volt_cel);
-  Serial.print(" Cell min voltage: ");
-  Serial.print(min_volt_cel);
-  Serial.print(" Cell max temp: ");
-  Serial.print(max_temp_cel);
-  Serial.print(" Cell min temp: ");
-  Serial.println(min_temp_cel);
+#ifdef DEBUG_LOG
+  logging.println("Battery Values");
+  logging.print("BMU SOC: ");
+  logging.print(BMU_SOC);
+  logging.print(" BMU Current: ");
+  logging.print(BMU_Current);
+  logging.print(" BMU Battery Voltage: ");
+  logging.print(BMU_PackVoltage);
+  logging.print(" BMU_Power: ");
+  logging.print(BMU_Power);
+  logging.print(" Cell max voltage: ");
+  logging.print(max_volt_cel);
+  logging.print(" Cell min voltage: ");
+  logging.print(min_volt_cel);
+  logging.print(" Cell max temp: ");
+  logging.print(max_temp_cel);
+  logging.print(" Cell min temp: ");
+  logging.println(min_temp_cel);
 #endif
 }
 
-void receive_can_battery(CAN_frame rx_frame) {
+void handle_incoming_can_frame_battery(CAN_frame rx_frame) {
   switch (rx_frame.ID) {
     case 0x374:  //BMU message, 10ms - SOC
       datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
@@ -209,7 +207,7 @@ void receive_can_battery(CAN_frame rx_frame) {
   }
 }
 
-void send_can_battery() {
+void transmit_can_battery() {
   unsigned long currentMillis = millis();
   // Send 100ms CAN Message
   if (currentMillis - previousMillis100 >= INTERVAL_100_MS) {
@@ -226,9 +224,8 @@ void send_can_battery() {
 }
 
 void setup_battery(void) {  // Performs one time setup at startup
-#ifdef DEBUG_VIA_USB
-  Serial.println("Mitsubishi i-MiEV / Citroen C-Zero / Peugeot Ion battery selected");
-#endif
+  strncpy(datalayer.system.info.battery_protocol, "I-Miev / C-Zero / Ion Triplet", 63);
+  datalayer.system.info.battery_protocol[63] = '\0';
   datalayer.battery.info.max_design_voltage_dV = MAX_PACK_VOLTAGE_DV;
   datalayer.battery.info.min_design_voltage_dV = MIN_PACK_VOLTAGE_DV;
   datalayer.battery.info.max_cell_voltage_mV = MAX_CELL_VOLTAGE_MV;

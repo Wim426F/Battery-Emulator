@@ -39,18 +39,12 @@ void update_values_battery() {  //This function maps all the values fetched via 
 
   datalayer.battery.status.max_charge_power_W;
 
-  datalayer.battery.status.active_power_W;
-
   datalayer.battery.status.temperature_min_dC;
 
   datalayer.battery.status.temperature_max_dC;
-
-#ifdef DEBUG_VIA_USB
-
-#endif
 }
 
-void receive_can_battery(CAN_frame rx_frame) {
+void handle_incoming_can_frame_battery(CAN_frame rx_frame) {
   datalayer.battery.status.CAN_battery_still_alive = CAN_STILL_ALIVE;
   switch (rx_frame.ID) {
     case 0x171:  //Following messages were detected on a MG5 battery BMS
@@ -114,7 +108,7 @@ void receive_can_battery(CAN_frame rx_frame) {
       break;
   }
 }
-void send_can_battery() {
+void transmit_can_battery() {
   unsigned long currentMillis = millis();
   //Send 10ms message
   if (currentMillis - previousMillis10 >= INTERVAL_10_MS) {
@@ -126,20 +120,19 @@ void send_can_battery() {
     }
     previousMillis10 = currentMillis;
 
-    transmit_can(&MG_5_100, can_config.battery);
+    transmit_can_frame(&MG_5_100, can_config.battery);
   }
   // Send 100ms CAN Message
   if (currentMillis - previousMillis100 >= INTERVAL_100_MS) {
     previousMillis100 = currentMillis;
 
-    //transmit_can(&MG_5_100, can_config.battery);
+    //transmit_can_frame(&MG_5_100, can_config.battery);
   }
 }
 
 void setup_battery(void) {  // Performs one time setup at startup
-#ifdef DEBUG_VIA_USB
-  Serial.println("MG 5 battery selected");
-#endif
+  strncpy(datalayer.system.info.battery_protocol, "MG 5 battery", 63);
+  datalayer.system.info.battery_protocol[63] = '\0';
 
   datalayer.battery.info.max_design_voltage_dV = MAX_PACK_VOLTAGE_DV;
   datalayer.battery.info.min_design_voltage_dV = MIN_PACK_VOLTAGE_DV;
